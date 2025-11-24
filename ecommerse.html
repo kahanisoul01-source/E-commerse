@@ -69,7 +69,7 @@
       import { createRoot } from 'react-dom/client';
       import { 
         ShoppingBag, Search, Menu, X, Plus, Minus, Trash2, ArrowRight, 
-        User, Instagram, Twitter, Facebook, Youtube, LogOut, Lock, Upload, Loader2, AlertCircle, Eye, EyeOff
+        User, Instagram, Twitter, Facebook, Youtube, LogOut, Lock, Upload, Loader2, AlertCircle, Eye, EyeOff, Image as ImageIcon
       } from 'lucide-react';
       import { initializeApp } from "firebase/app";
       import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "firebase/firestore";
@@ -151,11 +151,11 @@
                   items.map((item) => (
                     <div key={item.id} className="bg-white/5 border border-white/10 rounded-xl p-4 flex gap-4 group hover:bg-white/10 transition-colors">
                       <div className="w-20 h-20 rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
-                        <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+                        <img src={item.image} alt={item.title || item.name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 flex flex-col justify-between">
                         <div className="flex justify-between items-start">
-                          <h3 className="text-white font-medium leading-tight">{item.title}</h3>
+                          <h3 className="text-white font-medium leading-tight">{item.title || item.name}</h3>
                           <button 
                             onClick={() => onRemoveItem(item.id)}
                             className="text-white/40 hover:text-red-400 transition-colors"
@@ -265,10 +265,15 @@
         const handleImageChange = (e) => {
           if (e.target.files) {
             const selectedFiles = Array.from(e.target.files);
-            setFiles(selectedFiles);
+            setFiles(prev => [...prev, ...selectedFiles]);
             const newPreviews = selectedFiles.map(file => URL.createObjectURL(file));
-            setPreviews(newPreviews);
+            setPreviews(prev => [...prev, ...newPreviews]);
           }
+        };
+
+        const removeImage = (index) => {
+            setFiles(prev => prev.filter((_, i) => i !== index));
+            setPreviews(prev => prev.filter((_, i) => i !== index));
         };
 
         const uploadToCloudinary = async (file) => {
@@ -303,10 +308,11 @@
 
           try {
             if (files.length > 0) {
-              for (const file of files) {
-                  const url = await uploadToCloudinary(file);
-                  if (url) uploadedUrls.push(url);
-              }
+              // Upload all images in parallel
+              const uploadPromises = files.map(file => uploadToCloudinary(file));
+              const results = await Promise.all(uploadPromises);
+              uploadedUrls = results.filter(url => url);
+              
               if (uploadedUrls.length > 0) {
                 mainImage = uploadedUrls[0];
               }
@@ -354,26 +360,49 @@
               <div className="p-8">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <div className="w-full aspect-video bg-[#111] border-2 border-dashed border-white/10 rounded-xl overflow-hidden relative group hover:border-white/30 transition-colors flex items-center justify-center">
+                    <label className="text-[10px] font-bold uppercase text-white/40 ml-1 tracking-widest">Product Images</label>
+                    <div className={`w-full bg-[#111] border-2 border-dashed border-white/10 rounded-xl overflow-hidden relative group hover:border-white/30 transition-colors ${previews.length === 0 ? 'aspect-video flex items-center justify-center' : 'p-2'}`}>
+                      
                       {previews.length > 0 ? (
-                        <div className="w-full h-full p-2 grid grid-cols-2 gap-2 overflow-y-auto">
+                        <div className="grid grid-cols-3 gap-2 w-full">
                           {previews.map((src, idx) => (
-                            <img key={idx} src={src} className="w-full h-full object-cover rounded-lg" />
+                            <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group/img">
+                              <img src={src} className="w-full h-full object-cover" />
+                              <button 
+                                type="button"
+                                onClick={() => removeImage(idx)} 
+                                className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
                           ))}
+                          <label className="aspect-square bg-white/5 border border-white/10 border-dashed rounded-lg flex items-center justify-center cursor-pointer hover:bg-white/10 transition-colors">
+                            <Plus size={24} className="text-white/30" />
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              multiple
+                              onChange={handleImageChange}
+                              className="hidden"
+                            />
+                          </label>
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-white/30">
-                          <Upload size={32} className="mb-2" />
-                          <p className="text-xs uppercase font-bold tracking-widest">Upload Images</p>
-                        </div>
+                        <>
+                          <div className="flex flex-col items-center justify-center text-white/30 pointer-events-none">
+                            <Upload size={32} className="mb-2" />
+                            <p className="text-xs uppercase font-bold tracking-widest">Upload Images</p>
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageChange}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                          />
+                        </>
                       )}
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        multiple
-                        onChange={handleImageChange}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -613,6 +642,7 @@
         const [scrolled, setScrolled] = useState(false);
         const [isAuthOpen, setIsAuthOpen] = useState(false);
         const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+        const [activeImage, setActiveImage] = useState(null);
 
         // Admin Access: Allow any logged in user for demo purposes
         const isAdmin = !!user;
@@ -723,12 +753,17 @@
 
         // Filter
         const filteredProducts = products.filter(p => 
-            (p.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (p.title || p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
             (p.category || "").toLowerCase().includes(searchQuery.toLowerCase())
         );
 
         const handleExploreClick = () => {
             document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+        };
+
+        const openProductDetail = (product) => {
+            setSelectedProduct(product);
+            setActiveImage(product.image);
         };
 
         return (
@@ -881,13 +916,20 @@
                   <div 
                     key={product.id}
                     className="group cursor-pointer"
-                    onClick={() => setSelectedProduct(product)}
+                    onClick={() => openProductDetail(product)}
                   >
                     <div className="relative aspect-[3/4] bg-[#111] rounded-2xl overflow-hidden mb-6">
                       {product.badge && (
                         <div className="absolute top-4 left-4 z-20 bg-white text-black text-[10px] font-black px-3 py-1 uppercase tracking-wider">
                           {product.badge}
                         </div>
+                      )}
+                      
+                      {product.images && product.images.length > 1 && (
+                         <div className="absolute top-4 left-auto right-4 z-20 bg-black/50 backdrop-blur-md text-white px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1">
+                             <ImageIcon size={10} />
+                             {product.images.length}
+                         </div>
                       )}
 
                       {isAdmin && (
@@ -902,7 +944,7 @@
 
                       <img 
                         src={product.image} 
-                        alt={product.title}
+                        alt={product.title || product.name}
                         className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
                       />
                       
@@ -916,12 +958,12 @@
 
                     <div>
                       <div className="flex justify-between items-start mb-1">
-                         <h3 className="text-lg font-bold text-white group-hover:underline decoration-1 underline-offset-4">{product.title}</h3>
+                         <h3 className="text-lg font-bold text-white group-hover:underline decoration-1 underline-offset-4">{product.title || product.name}</h3>
                          <span className="text-lg font-medium text-white/60">${product.price}</span>
                       </div>
                       <p className="text-white/40 text-sm font-medium">{product.category}</p>
                       {/* Added Description Preview so user knows it exists */}
-                      <p className="text-white/30 text-xs line-clamp-2 mt-2">{product.desc}</p>
+                      <p className="text-white/30 text-xs line-clamp-2 mt-2">{product.desc || product.description}</p>
                     </div>
                   </div>
                 ))}
@@ -977,12 +1019,28 @@
                   >
                     <X size={24} />
                   </button>
-                  <div className="relative w-full md:w-1/2 h-1/2 md:h-auto bg-[#111]">
-                    <img 
-                      src={selectedProduct.image} 
-                      alt={selectedProduct.title} 
-                      className="w-full h-full object-cover opacity-90"
-                    />
+                  <div className="relative w-full md:w-1/2 h-1/2 md:h-auto bg-[#111] flex flex-col">
+                    <div className="flex-1 relative overflow-hidden">
+                       <img 
+                        src={activeImage || selectedProduct.image} 
+                        alt={selectedProduct.title || selectedProduct.name} 
+                        className="w-full h-full object-cover opacity-90 transition-opacity duration-300"
+                       />
+                    </div>
+                    {/* Gallery Thumbnails */}
+                    {selectedProduct.images && selectedProduct.images.length > 1 && (
+                        <div className="flex gap-2 p-4 overflow-x-auto bg-[#0a0a0a] border-t border-white/5 scrollbar-thin">
+                           {selectedProduct.images.map((img, idx) => (
+                               <button 
+                                key={idx}
+                                onClick={() => setActiveImage(img)} 
+                                className={`w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${activeImage === img ? 'border-pink-500 opacity-100' : 'border-transparent opacity-50 hover:opacity-80'}`}
+                               >
+                                  <img src={img} className="w-full h-full object-cover" />
+                               </button>
+                           ))}
+                        </div>
+                    )}
                   </div>
                   <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center bg-[#0a0a0a]">
                     <div className="mb-auto">
@@ -990,8 +1048,8 @@
                          <span className="px-3 py-1 border border-white/20 rounded-full text-xs font-bold uppercase tracking-wider text-white/60">{selectedProduct.category}</span>
                          {selectedProduct.badge && <span className="px-3 py-1 bg-white text-black rounded-full text-xs font-bold uppercase tracking-wider">{selectedProduct.badge}</span>}
                       </div>
-                      <h2 className="text-4xl md:text-6xl font-black leading-[0.9] mb-6 tracking-tight">{selectedProduct.title}</h2>
-                      <p className="text-white/60 text-lg leading-relaxed mb-8">{selectedProduct.desc}</p>
+                      <h2 className="text-4xl md:text-6xl font-black leading-[0.9] mb-6 tracking-tight">{selectedProduct.title || selectedProduct.name}</h2>
+                      <p className="text-white/60 text-lg leading-relaxed mb-8">{selectedProduct.desc || selectedProduct.description}</p>
                     </div>
                     <div className="pt-8 border-t border-white/10">
                       <div className="flex items-end justify-between mb-6">
