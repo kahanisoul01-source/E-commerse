@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Admin Panel | Manage Products</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- GOOGLE FONT -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    body {
+        margin: 0;
+        font-family: 'Poppins', sans-serif;
+        background: #0d0d0d;
+        color: white;
+    }
+
+    .navbar {
+        background: #111;
+        padding: 18px 30px;
+        font-size: 20px;
+        font-weight: 600;
+        border-bottom: 1px solid #222;
+    }
+
+    .container {
+        max-width: 900px;
+        margin: 30px auto;
+        padding: 15px;
+    }
+
+    h2 {
+        font-size: 30px;
+        margin-bottom: 15px;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .card {
+        background: #151515;
+        padding: 20px;
+        border-radius: 14px;
+        box-shadow: 0px 0px 15px #000;
+        margin-bottom: 30px;
+        border: 1px solid #222;
+    }
+
+    input, textarea, select {
+        width: 100%;
+        padding: 12px;
+        margin-top: 8px;
+        margin-bottom: 18px;
+        border-radius: 10px;
+        border: 1px solid #333;
+        background: #0f0f0f;
+        color: white;
+        font-size: 15px;
+    }
+
+    .btn {
+        background: linear-gradient(45deg, #ff006a, #ff4da6);
+        border: none;
+        padding: 14px;
+        width: 100%;
+        font-size: 17px;
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+        margin-top: 10px;
+        transition: 0.3s;
+    }
+
+    .btn:hover {
+        opacity: 0.85;
+    }
+
+    .preview-box {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .preview-box img {
+        height: 80px;
+        width: 80px;
+        border-radius: 10px;
+        object-fit: cover;
+        border: 2px solid #333;
+    }
+
+    .product-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 20px;
+    }
+
+    .product-card {
+        background: #191919;
+        padding: 15px;
+        border-radius: 12px;
+        text-align: center;
+        border: 1px solid #2a2a2a;
+    }
+
+    .product-card img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+
+    .del-btn {
+        background: red;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+</style>
+</head>
+<body>
+
+<div class="navbar">🔥 Prinsports Admin Panel</div>
+
+<div class="container">
+
+    <h2>Manage Products</h2>
+    <div id="status" style="text-align:center; margin-bottom:20px; font-size:16px; color:#ff4da6"></div>
+
+    <!-- Add Product Card -->
+    <div class="card">
+        <h3>Add New Product</h3>
+
+        <input id="pname" placeholder="Product Title">
+        <input id="pprice" placeholder="Price" type="number">
+        <textarea id="pdesc" placeholder="Product Description"></textarea>
+        <input id="pimage" type="file" accept="image/*" multiple>
+
+        <div class="preview-box" id="previewBox"></div>
+
+        <button class="btn" onclick="addProduct()">Add Product</button>
+        <p id="msg"></p>
+    </div>
+
+    <h2>All Products</h2>
+    <div class="product-grid" id="productList"></div>
+
+</div>
+
+<!-- Firebase & Cloudinary -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js";
+    import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAktITTwIt6yG3g9SBmtptUrmi6MzGCCqQ",
+        authDomain: "e-commerse-7f4d8.firebaseapp.com",
+        projectId: "e-commerse-7f4d8",
+        storageBucket: "e-commerse-7f4d8.appspot.com",
+        messagingSenderId: "545434653958",
+        appId: "1:545434653958:web:134ae4363923094a1b3a87"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const ADMIN_UID = "Xeczvxk9SYX93lM5cWAQhC94sPl1";
+    const CLOUD_NAME = "dvvwqio1d";
+    const UPLOAD_PRESET = "unsigned_preset";
+
+    const statusBox = document.getElementById("status");
+
+    onAuthStateChanged(auth, user => {
+        if (!user) {
+            statusBox.innerText = "Not logged in… redirecting";
+            setTimeout(() => window.location.href = "login.html", 1500);
+            return;
+        }
+        if (user.uid !== ADMIN_UID) {
+            statusBox.innerText = "❌ Access Denied";
+            return;
+        }
+        statusBox.innerText = "✔ Logged in as Admin";
+    });
+
+    // IMAGE PREVIEW
+    document.getElementById("pimage").addEventListener("change", e => {
+        const files = e.target.files;
+        const box = document.getElementById("previewBox");
+        box.innerHTML = "";
+        [...files].forEach(f => {
+            const img = document.createElement("img");
+            img.src = URL.createObjectURL(f);
+            box.appendChild(img);
+        });
+    });
+
+    // UPLOAD SINGLE IMAGE
+    async function uploadImg(file) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("upload_preset", UPLOAD_PRESET);
+
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+            method: "POST",
+            body: fd
+        });
+
+        const data = await res.json();
+        return data.secure_url;
+    }
+
+    // ADD PRODUCT
+    window.addProduct = async function () {
+        const name = pname.value.trim();
+        const price = Number(pprice.value);
+        const desc = pdesc.value.trim();
+        const files = pimage.files;
+
+        if (!name || !price || !desc || files.length === 0) {
+            msg.innerText = "Fill all fields properly!";
+            return;
+        }
+
+        msg.innerText = "Uploading images…";
+
+        let imageURLs = [];
+        for (let f of files) {
+            const url = await uploadImg(f);
+            imageURLs.push(url);
+        }
+
+        msg.innerText = "Saving product…";
+
+        await addDoc(collection(db, "products"), {
+            name, price, desc,
+            images: imageURLs,
+            image: imageURLs[0],
+            createdAt: serverTimestamp()
+        });
+
+        msg.innerText = "✔ Product Added!";
+    };
+
+    // LOAD PRODUCTS
+    const productList = document.getElementById("productList");
+
+    onSnapshot(collection(db, "products"), snap => {
+        productList.innerHTML = "";
+
+        snap.forEach(docSnap => {
+            const d = docSnap.data();
+
+            productList.innerHTML += `
+                <div class="product-card">
+                    <img src="${d.image}">
+                    <h4>${d.name}</h4>
+                    <p>₹${d.price}</p>
+                    <button class="del-btn" onclick="deleteProduct('${docSnap.id}')">Delete</button>
+                </div>
+            `;
+        });
+    });
+
+    // DELETE PRODUCT  
+    window.deleteProduct = async function (id) {
+        if (confirm("Delete this product?")) {
+            await deleteDoc(doc(db, "products", id));
+        }
+    };
+</script>
+
+</body>
+</html>
