@@ -140,6 +140,18 @@
         <input id="pname" placeholder="Product Title">
         <input id="pprice" placeholder="Price" type="number">
         <textarea id="pdesc" placeholder="Product Description"></textarea>
+
+        <!-- CATEGORY DROPDOWN -->
+        <select id="pcategory">
+            <option value="">Select Category</option>
+            <option value="New & Featured">New & Featured</option>
+            <option value="Men">Men</option>
+            <option value="Women">Women</option>
+            <option value="Kids">Kids</option>
+            <option value="Sale">Sale</option>
+            <option value="SNKRS">SNKRS</option>
+        </select>
+
         <input id="pimage" type="file" accept="image/*" multiple>
 
         <div class="preview-box" id="previewBox"></div>
@@ -203,7 +215,7 @@
         });
     });
 
-    // UPLOAD SINGLE IMAGE
+    // UPLOAD IMAGE TO CLOUDINARY
     async function uploadImg(file) {
         const fd = new FormData();
         fd.append("file", file);
@@ -223,9 +235,10 @@
         const name = pname.value.trim();
         const price = Number(pprice.value);
         const desc = pdesc.value.trim();
+        const category = pcategory.value;
         const files = pimage.files;
 
-        if (!name || !price || !desc || files.length === 0) {
+        if (!name || !price || !desc || !category || files.length === 0) {
             msg.innerText = "Fill all fields properly!";
             return;
         }
@@ -241,7 +254,10 @@
         msg.innerText = "Saving product…";
 
         await addDoc(collection(db, "products"), {
-            name, price, desc,
+            name,
+            price,
+            desc,
+            category,
             images: imageURLs,
             image: imageURLs[0],
             createdAt: serverTimestamp()
@@ -264,6 +280,7 @@
                     <img src="${d.image}">
                     <h4>${d.name}</h4>
                     <p>₹${d.price}</p>
+                    <p style="color:#aaa">${d.category}</p>
                     <button class="del-btn" onclick="deleteProduct('${docSnap.id}')">Delete</button>
                 </div>
             `;
