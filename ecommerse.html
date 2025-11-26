@@ -222,7 +222,7 @@
       const PrinsportsLogo = ({ className = "", onClick }) => (
         <div onClick={onClick} className={`flex items-center gap-2 ${className} select-none cursor-pointer group`}>
           <img 
-            src="prinespots.png" 
+            src="image.png" 
             alt="Prinsports Logo" 
             className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-300"
             onError={(e) => {
@@ -321,22 +321,28 @@
                 mainImage = uploadedUrls[0];
               }
             }
+            
+            // Auto-detect SALE
+            const price = Number(formData.price);
+            const originalPrice = formData.originalPrice ? Number(formData.originalPrice) : null;
+            const badge = (originalPrice && originalPrice > price) ? "SALE" : "NEW";
 
             const newProduct = {
               title: formData.name,
-              price: Number(formData.price),
-              originalPrice: formData.originalPrice ? Number(formData.originalPrice) : null,
+              price: price,
+              originalPrice: originalPrice,
               category: formData.category,
               section: formData.section, // Men, Women, Kids, Unisex
               desc: formData.description,
               image: mainImage,
               images: uploadedUrls.length > 0 ? uploadedUrls : [mainImage],
-              badge: formData.originalPrice && Number(formData.originalPrice) > Number(formData.price) ? "SALE" : "NEW",
+              badge: badge,
               createdAt: Date.now()
             };
 
             await onAdd(newProduct);
             
+            // Reset to default section 'Men'
             setFormData({ name: '', price: '', originalPrice: '', category: 'Footwear', section: 'Men', description: '' });
             setFiles([]);
             setPreviews([]);
@@ -559,6 +565,9 @@
              }
           } catch (err) {
               console.error(err);
+              // FIX: Ensure error is a string to prevent React Error #31
+              const errorMessage = err.message || "An error occurred";
+              
               if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
                   setError("Invalid email or password.");
               } else if (err.code === 'auth/email-already-in-use') {
@@ -566,7 +575,7 @@
               } else if (err.code === 'auth/too-many-requests') {
                   setError("Too many failed attempts. Try later.");
               } else {
-                  setError(err.message);
+                  setError(String(errorMessage));
               }
           } finally {
               setLoading(false);
@@ -673,13 +682,20 @@
         const [activeSection, setActiveSection] = useState("All"); 
         const [selectedProduct, setSelectedProduct] = useState(null);
         const [user, setUser] = useState(null);
+        
+        // Split state: Database products vs Local products (for when DB is read-only or not connected)
         const [products, setProducts] = useState([]);
+        const [localProducts, setLocalProducts] = useState([]);
+
         const [scrolled, setScrolled] = useState(false);
         const [isAuthOpen, setIsAuthOpen] = useState(false);
         const [isAddProductOpen, setIsAddProductOpen] = useState(false);
         const [activeImage, setActiveImage] = useState(null);
 
         const isAdmin = !!user;
+
+        // Combine DB products and Local products for display
+        const allProducts = [...localProducts, ...products];
 
         useEffect(() => {
           const onScroll = () => setScrolled(window.scrollY > 20);
@@ -747,15 +763,17 @@
         const handleAddProduct = async (newProduct) => {
             const tempId = 'temp-' + Date.now();
             const productWithId = { ...newProduct, id: tempId };
-            setProducts(prev => [productWithId, ...prev]);
+            
+            // Add to LOCAL state immediately so it persists even if DB fails or snapshot overwrites it
+            setLocalProducts(prev => [productWithId, ...prev]);
 
             if (!isFirebaseActive) return;
             
             try {
               await addDoc(collection(db, "products"), newProduct);
             } catch (error) {
-              console.error("Database Error (likely permissions):", error);
-              alert("Note: Product added LOCALLY only. Your Firebase Security Rules are blocking writes.");
+              console.error("Database Write Error (using local only):", error);
+              // Product remains in localProducts, so it won't disappear
             }
         };
 
@@ -763,7 +781,10 @@
             e.stopPropagation();
             if (!isAdmin) return;
             if (confirm("Are you sure you want to delete this product?")) {
+                // Optimistically remove from both states
                 setProducts(prev => prev.filter(p => p.id !== productId));
+                setLocalProducts(prev => prev.filter(p => p.id !== productId));
+                
                 if (selectedProduct?.id === productId) setSelectedProduct(null);
 
                 try {
@@ -776,27 +797,55 @@
             }
         };
 
-        const filteredProducts = products.filter(p => {
+        // --- ROBUST FILTERING LOGIC ---
+        const filteredProducts = allProducts.filter(p => {
+            // 1. Search Filter
             const matchesSearch = (p.title || p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
                                   (p.category || "").toLowerCase().includes(searchQuery.toLowerCase());
             
-            // Primary Section Filter (Applied to both Navbar and Middle Bar selections)
-            let matchesSection = true;
+            if (!matchesSearch) return false;
 
-            // FIX: Robust Sale Logic
+            // 2. Section/Tab Filter
+            if (activeSection === 'All') return true; 
+
+            // Safe property access & Normalization
+            const section = (p.section || "").toLowerCase().trim();
+            const category = (p.category || "").toLowerCase().trim();
+            const badge = (p.badge || "").toLowerCase().trim();
             const price = Number(p.price) || 0;
             const originalPrice = p.originalPrice ? Number(p.originalPrice) : 0;
-            // Check numeric sale AND explicit badge 'SALE'
-            const isSale = (originalPrice > price) || (p.badge && p.badge.toUpperCase() === 'SALE');
+            
+            // Check manual categories from Firestore array (if exists)
+            const manualCategories = Array.isArray(p.categories) 
+              ? p.categories.map(c => String(c).toLowerCase()) 
+              : [];
 
-            if (activeSection === 'Men') matchesSection = p.section === 'Men' || p.section === 'Unisex';
-            else if (activeSection === 'Women') matchesSection = p.section === 'Women' || p.section === 'Unisex';
-            else if (activeSection === 'Kids') matchesSection = p.section === 'Kids';
-            else if (activeSection === 'Sale') matchesSection = isSale;
-            else if (activeSection === 'SNKRS') matchesSection = p.category === 'Footwear';
-            // 'All' matches everything
+            // SALE Logic: Original > Price OR Badge says 'sale' OR Categories has 'sale'
+            const isSale = (originalPrice > price) || 
+                           badge.includes('sale') || 
+                           manualCategories.includes('sale');
 
-            return matchesSearch && matchesSection;
+            if (activeSection === 'Men') {
+                return section === 'men' || section === 'unisex' || category === 'men';
+            }
+            
+            if (activeSection === 'Women') {
+                return section === 'women' || section === 'unisex' || category === 'women';
+            }
+            
+            if (activeSection === 'Kids') {
+                return section === 'kids' || category === 'kids';
+            }
+            
+            if (activeSection === 'Sale') {
+                return isSale;
+            }
+            
+            if (activeSection === 'SNKRS') {
+                return category === 'footwear' || category === 'snkrs' || manualCategories.includes('snkrs');
+            }
+
+            return false;
         });
 
         const handleExploreClick = () => {
@@ -814,8 +863,6 @@
             document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
         };
 
-        // --- UPDATED MIDDLE BAR FILTERS ---
-        // Same structure as Top Navbar to keep them in sync
         const sectionFilters = [
           { label: 'New & Featured', id: 'All' },
           { label: 'Men', id: 'Men' },
@@ -826,7 +873,7 @@
         ];
 
         return (
-          <div className="min-h-screen font-sans selection:bg-white/30">
+          <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-white/30">
             <TopBanner />
             
             {/* Navbar */}
