@@ -10,6 +10,8 @@
       body {
         font-family: 'Inter', sans-serif;
         background-color: #050505;
+        background-image: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #050505 60%, #000000 100%);
+        background-attachment: fixed;
         color: white;
         overflow-x: hidden;
       }
@@ -30,10 +32,11 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #555; 
       }
-      /* Animations */
-      @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-20px); }
+      .glass-card {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.01) 100%);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
       }
       .no-scrollbar::-webkit-scrollbar {
         display: none;
@@ -43,7 +46,7 @@
         scrollbar-width: none;
       }
     </style>
-    <!-- Import Map: Cleaned up to prevent version conflicts -->
+    <!-- Import Map -->
     <script type="importmap">
 {
   "imports": {
@@ -54,7 +57,8 @@
     "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
     "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
   }
 }
 </script>
@@ -119,7 +123,7 @@
               className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
               onClick={onClose}
             />
-            <div className="relative w-full max-w-md h-full bg-[#1a1c2c]/90 backdrop-blur-xl border-l border-white/10 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="relative w-full max-w-md h-full bg-[#0a0a0a] border-l border-white/10 flex flex-col animate-in slide-in-from-right duration-300">
               <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
                 <div>
                   <h2 className="text-2xl font-bold text-white">Your Cart</h2>
@@ -215,23 +219,23 @@
       };
 
       // --- Custom Logo Component ---
-      const PrinsportsLogo = ({ className = "" }) => (
-        <div className={`flex items-center gap-2 ${className} select-none cursor-pointer group`}>
-          <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center transition-transform duration-500 group-hover:rotate-12">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-pink-600 via-purple-600 to-indigo-800 shadow-[0_0_20px_rgba(168,85,247,0.4)]" />
-            <div className="absolute inset-0 rounded-full bg-gradient-to-t from-black/20 to-transparent" />
-            <div className="absolute top-1 left-2 w-4 h-3 bg-white/20 rounded-full blur-[2px] rotate-45" />
-            <div className="absolute bottom-2 right-3 w-2 h-2 bg-pink-400/50 rounded-full blur-[1px]" />
-            <span className="relative z-10 font-black text-2xl md:text-3xl italic text-white drop-shadow-lg transform -translate-x-[1px]">P</span>
-          </div>
-          <span className="text-2xl md:text-3xl font-bold tracking-tight text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-pink-200 transition-all">
-            rinsports
-          </span>
+      const PrinsportsLogo = ({ className = "", onClick }) => (
+        <div onClick={onClick} className={`flex items-center gap-2 ${className} select-none cursor-pointer group`}>
+          <img 
+            src="prinespots.png" 
+            alt="Prinsports Logo" 
+            className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              e.target.onerror = null; 
+              // Fallback if image fails to load
+              e.target.src = "https://placehold.co/150x50/black/white?text=Prinsports";
+            }}
+          />
         </div>
       );
 
       const TopBanner = () => (
-        <div className="bg-white text-black text-[10px] md:text-xs font-bold text-center py-2 tracking-[0.2em] uppercase">
+        <div className="bg-[#f5f5f5] text-black text-[10px] md:text-xs font-bold text-center py-2 tracking-[0.2em] uppercase">
           Free Worldwide Shipping on orders over $150
         </div>
       );
@@ -242,7 +246,9 @@
         const [formData, setFormData] = useState({
           name: '',
           price: '',
+          originalPrice: '',
           category: 'Footwear',
+          section: 'Men',
           description: '',
         });
         const [files, setFiles] = useState([]);
@@ -253,7 +259,6 @@
 
         if (!isOpen) return null;
 
-        // Use functional state updates to ensure data integrity
         const handleChange = (e) => {
             const { name, value } = e.target;
             setFormData(prev => ({
@@ -308,7 +313,6 @@
 
           try {
             if (files.length > 0) {
-              // Upload all images in parallel
               const uploadPromises = files.map(file => uploadToCloudinary(file));
               const results = await Promise.all(uploadPromises);
               uploadedUrls = results.filter(url => url);
@@ -318,22 +322,22 @@
               }
             }
 
-            // Change name -> title and description -> desc
             const newProduct = {
               title: formData.name,
               price: Number(formData.price),
+              originalPrice: formData.originalPrice ? Number(formData.originalPrice) : null,
               category: formData.category,
+              section: formData.section, // Men, Women, Kids, Unisex
               desc: formData.description,
               image: mainImage,
               images: uploadedUrls.length > 0 ? uploadedUrls : [mainImage],
-              badge: "NEW",
+              badge: formData.originalPrice && Number(formData.originalPrice) > Number(formData.price) ? "SALE" : "NEW",
               createdAt: Date.now()
             };
 
             await onAdd(newProduct);
             
-            // Reset form only on success
-            setFormData({ name: '', price: '', category: 'Footwear', description: '' });
+            setFormData({ name: '', price: '', originalPrice: '', category: 'Footwear', section: 'Men', description: '' });
             setFiles([]);
             setPreviews([]);
             onClose();
@@ -348,10 +352,10 @@
         return (
           <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4" onClick={onClose}>
              <div 
-              className="bg-[#0a0a0a] border border-white/10 text-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto" 
+              className="glass-card text-white w-full max-w-lg rounded-3xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto" 
               onClick={e => e.stopPropagation()}
             >
-              <div className="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#0a0a0a] z-10">
+              <div className="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-black/50 backdrop-blur-md z-10">
                 <h3 className="text-xl font-bold">Add New Product</h3>
                 <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-white/50 hover:text-white">
                   <X size={20} />
@@ -431,6 +435,36 @@
                       />
                     </div>
                   </div>
+                  
+                  {/* New Fields: Sale Price & Section */}
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                      <label className="text-[10px] font-bold uppercase text-white/40 ml-1 tracking-widest">Original Price (Opt)</label>
+                      <input 
+                        name="originalPrice"
+                        type="number" 
+                        value={formData.originalPrice}
+                        onChange={handleChange}
+                        className="w-full bg-[#111] border border-white/10 rounded-xl p-3 text-white focus:border-pink-500 outline-none transition-colors placeholder-white/20"
+                        placeholder="For Sale items"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold uppercase text-white/40 ml-1 tracking-widest">Section / Gender</label>
+                        <select 
+                        name="section"
+                        value={formData.section}
+                        onChange={handleChange}
+                        className="w-full bg-[#111] border border-white/10 rounded-xl p-3 text-white focus:border-pink-500 outline-none transition-colors"
+                        >
+                        <option value="Men">Men</option>
+                        <option value="Women">Women</option>
+                        <option value="Kids">Kids</option>
+                        <option value="Unisex">Unisex</option>
+                        </select>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase text-white/40 ml-1 tracking-widest">Category</label>
                     <select 
@@ -471,7 +505,7 @@
         );
       };
 
-      // --- Auth Modal: REAL LOGIN/SIGNUP with Firebase (No Verification) ---
+      // --- Auth Modal ---
       const AuthModal = ({ isOpen, onClose }) => {
         const [isSignUp, setIsSignUp] = useState(false);
         const [email, setEmail] = useState("");
@@ -542,7 +576,7 @@
         return (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4" onClick={onClose}>
             <div 
-              className="bg-[#0a0a0a] border border-white/10 text-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200" 
+              className="glass-card text-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200" 
               onClick={e => e.stopPropagation()}
             >
               <div className="flex border-b border-white/10">
@@ -636,6 +670,7 @@
         const [cartItems, setCartItems] = useState([]);
         const [isCartOpen, setIsCartOpen] = useState(false);
         const [searchQuery, setSearchQuery] = useState("");
+        const [activeSection, setActiveSection] = useState("All"); 
         const [selectedProduct, setSelectedProduct] = useState(null);
         const [user, setUser] = useState(null);
         const [products, setProducts] = useState([]);
@@ -644,17 +679,14 @@
         const [isAddProductOpen, setIsAddProductOpen] = useState(false);
         const [activeImage, setActiveImage] = useState(null);
 
-        // Admin Access: Allow any logged in user for demo purposes
         const isAdmin = !!user;
 
-        // Scroll Effect
         useEffect(() => {
           const onScroll = () => setScrolled(window.scrollY > 20);
           window.addEventListener('scroll', onScroll);
           return () => window.removeEventListener('scroll', onScroll);
         }, []);
 
-        // Firebase Auth Listener
         useEffect(() => {
             if (!isFirebaseActive) return;
             const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -663,7 +695,6 @@
             return () => unsubscribe();
         }, []);
 
-        // Firebase Realtime Products Listener
         useEffect(() => {
             if (!isFirebaseActive) return;
             const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
@@ -679,7 +710,6 @@
             return () => unsubscribe();
         }, []);
 
-        // Actions
         const addToCart = (product) => {
           if (!user) {
             setIsAuthOpen(true);
@@ -715,11 +745,8 @@
         };
 
         const handleAddProduct = async (newProduct) => {
-            // Optimistically add to local state to show it works immediately for the user
             const tempId = 'temp-' + Date.now();
             const productWithId = { ...newProduct, id: tempId };
-            
-            // We add it to the start of the array
             setProducts(prev => [productWithId, ...prev]);
 
             if (!isFirebaseActive) return;
@@ -728,7 +755,7 @@
               await addDoc(collection(db, "products"), newProduct);
             } catch (error) {
               console.error("Database Error (likely permissions):", error);
-              alert("Note: Product added LOCALLY only. Your Firebase Security Rules are blocking writes. It will disappear on refresh.");
+              alert("Note: Product added LOCALLY only. Your Firebase Security Rules are blocking writes.");
             }
         };
 
@@ -736,7 +763,6 @@
             e.stopPropagation();
             if (!isAdmin) return;
             if (confirm("Are you sure you want to delete this product?")) {
-                // Optimistic delete
                 setProducts(prev => prev.filter(p => p.id !== productId));
                 if (selectedProduct?.id === productId) setSelectedProduct(null);
 
@@ -746,16 +772,32 @@
                   }
                 } catch (error) {
                   console.error("Database Error:", error);
-                  alert("Note: Product deleted LOCALLY only. Firebase permission denied.");
                 }
             }
         };
 
-        // Filter
-        const filteredProducts = products.filter(p => 
-            (p.title || p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (p.category || "").toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        const filteredProducts = products.filter(p => {
+            const matchesSearch = (p.title || p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                  (p.category || "").toLowerCase().includes(searchQuery.toLowerCase());
+            
+            // Primary Section Filter (Applied to both Navbar and Middle Bar selections)
+            let matchesSection = true;
+
+            // FIX: Robust Sale Logic
+            const price = Number(p.price) || 0;
+            const originalPrice = p.originalPrice ? Number(p.originalPrice) : 0;
+            // Check numeric sale AND explicit badge 'SALE'
+            const isSale = (originalPrice > price) || (p.badge && p.badge.toUpperCase() === 'SALE');
+
+            if (activeSection === 'Men') matchesSection = p.section === 'Men' || p.section === 'Unisex';
+            else if (activeSection === 'Women') matchesSection = p.section === 'Women' || p.section === 'Unisex';
+            else if (activeSection === 'Kids') matchesSection = p.section === 'Kids';
+            else if (activeSection === 'Sale') matchesSection = isSale;
+            else if (activeSection === 'SNKRS') matchesSection = p.category === 'Footwear';
+            // 'All' matches everything
+
+            return matchesSearch && matchesSection;
+        });
 
         const handleExploreClick = () => {
             document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
@@ -766,43 +808,70 @@
             setActiveImage(product.image);
         };
 
+        const handleSectionClick = (e, section) => {
+            if (e) e.preventDefault();
+            setActiveSection(section);
+            document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+        };
+
+        // --- UPDATED MIDDLE BAR FILTERS ---
+        // Same structure as Top Navbar to keep them in sync
+        const sectionFilters = [
+          { label: 'New & Featured', id: 'All' },
+          { label: 'Men', id: 'Men' },
+          { label: 'Women', id: 'Women' },
+          { label: 'Kids', id: 'Kids' },
+          { label: 'Sale', id: 'Sale' },
+          { label: 'SNKRS', id: 'SNKRS' }
+        ];
+
         return (
-          <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-white/30">
+          <div className="min-h-screen font-sans selection:bg-white/30">
             <TopBanner />
             
             {/* Navbar */}
-            <nav className={`sticky top-0 z-40 transition-all duration-500 ${scrolled ? 'bg-[#050505]/90 backdrop-blur-xl border-b border-white/5 py-3' : 'bg-transparent py-6'}`}>
+            <nav className={`sticky top-0 z-40 transition-all duration-500 ${scrolled ? 'bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/5 py-2' : 'bg-transparent py-6'}`}>
               <div className="container mx-auto px-4 md:px-8 flex items-center justify-between">
-                <PrinsportsLogo />
+                <PrinsportsLogo onClick={() => setActiveSection('All')} />
 
-                <div className={`hidden lg:flex items-center bg-white/5 border border-white/10 rounded-full px-5 py-2.5 w-96 hover:bg-white/10 transition-all focus-within:border-white/30 focus-within:bg-white/10 group ${scrolled || user ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                  <Search size={18} className="text-white/30 group-focus-within:text-white transition-colors" />
-                  <input 
-                    type="text"
-                    placeholder="Search for gear..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-transparent border-none outline-none text-white placeholder-white/30 ml-3 w-full text-sm font-medium"
-                  />
+                {/* Center Links (Nike Style) */}
+                <div className="hidden lg:flex items-center gap-6 font-semibold text-sm">
+                   {sectionFilters.map((link) => (
+                     <button 
+                       key={link.id}
+                       onClick={(e) => handleSectionClick(e, link.id)}
+                       className={`hover:text-pink-500 transition-colors uppercase tracking-tight ${activeSection === link.id ? 'text-pink-500 font-bold' : 'text-white'}`}
+                     >
+                       {link.label}
+                     </button>
+                   ))}
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-4">
+                  {/* Search Icon */}
+                  <div className={`hidden lg:flex items-center bg-white/5 border border-white/10 rounded-full px-3 py-1.5 w-40 hover:bg-white/10 transition-all focus-within:w-64 focus-within:border-white/30 focus-within:bg-white/10 group`}>
+                     <Search size={16} className="text-white/30 group-focus-within:text-white transition-colors" />
+                     <input 
+                       type="text"
+                       placeholder="Search"
+                       value={searchQuery}
+                       onChange={(e) => setSearchQuery(e.target.value)}
+                       className="bg-transparent border-none outline-none text-white placeholder-white/30 ml-2 w-full text-xs font-medium"
+                     />
+                   </div>
+
                   {user ? (
-                     <div className="flex items-center gap-4 pl-4 border-l border-white/10 animate-in fade-in">
+                     <div className="flex items-center gap-3 pl-2 animate-in fade-in">
                        {isAdmin && (
                            <button 
                             onClick={() => setIsAddProductOpen(true)}
-                            className="bg-pink-600 text-white px-3 py-1 rounded-full text-xs font-bold hover:bg-pink-500 transition-colors flex items-center gap-1"
+                            className="bg-pink-600 text-white p-2 rounded-full hover:bg-pink-500 transition-colors"
+                            title="Add Product"
                            >
-                             <Plus size={14} /> Add Item
+                             <Plus size={18} />
                            </button>
                        )}
-                       <div className="hidden md:block text-right">
-                         <p className="text-xs text-white/40 uppercase tracking-wider font-bold">Signed in as</p>
-                         <p className={`text-sm font-bold ${isAdmin ? 'text-pink-500' : 'text-white'}`}>
-                           {user.displayName || user.email}
-                         </p>
-                       </div>
+                       
                        <button 
                         onClick={handleLogout}
                         className="p-2 hover:bg-white/10 rounded-full text-white/60 hover:text-white transition-colors"
@@ -817,7 +886,7 @@
                        >
                         <ShoppingBag size={24} />
                         {cartItems.length > 0 && (
-                          <span className="absolute top-0 right-0 bg-white text-black text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-lg">
+                          <span className="absolute top-0 right-0 bg-white text-black text-[10px] font-black w-4 h-4 flex items-center justify-center rounded-full shadow-lg">
                             {cartItems.reduce((acc, item) => acc + item.quantity, 0)}
                           </span>
                         )}
@@ -826,10 +895,9 @@
                   ) : (
                     <button 
                       onClick={() => setIsAuthOpen(true)}
-                      className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded-full font-bold hover:scale-105 transition-transform"
+                      className="flex items-center gap-2 text-white font-semibold hover:text-pink-400 transition-colors"
                     >
-                      <User size={18} />
-                      <span className="hidden md:inline">Sign In</span>
+                      <User size={20} />
                     </button>
                   )}
                 </div>
@@ -837,11 +905,11 @@
             </nav>
 
             {/* Hero Section */}
-            {!user && (
+            {!user && activeSection === 'All' && (
               <section className="relative h-[85vh] flex items-center justify-center overflow-hidden animate-out fade-out slide-out-to-top duration-500">
                 <div className="absolute inset-0 z-0">
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/20 to-[#050505] z-10" />
-                  <div className="absolute inset-0 bg-black/40 z-0" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0a]/50 to-[#0a0a0a] z-10" />
+                  <div className="absolute inset-0 bg-black/20 z-0" />
                   <img 
                     src="https://images.unsplash.com/photo-1556906781-9a412961c28c?q=80&w=2000&auto=format&fit=crop" 
                     alt="Hero"
@@ -850,27 +918,23 @@
                 </div>
                 
                 <div className="container mx-auto px-6 relative z-20 text-center">
-                  <div className="inline-flex items-center gap-2 py-1 px-4 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-xs font-bold tracking-widest uppercase mb-8 hover:bg-white/20 transition-colors cursor-pointer">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"/>
-                    New Drops Available
-                  </div>
-                  <h1 className="text-6xl md:text-9xl font-black tracking-tighter mb-8 text-white leading-[0.9]">
+                  <h1 className="text-6xl md:text-9xl font-black tracking-tighter mb-8 text-white leading-[0.9] drop-shadow-2xl">
                     BEYOND<br/>
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/50 to-transparent">LIMITS.</span>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500">LIMITS.</span>
                   </h1>
-                  <p className="text-lg md:text-xl text-white/60 max-w-xl mx-auto mb-12 leading-relaxed">
+                  <p className="text-lg md:text-xl text-white/80 max-w-xl mx-auto mb-12 leading-relaxed font-medium drop-shadow-md">
                     Engineered for the ambitious. The new 2025 collection features adaptive fabrics and neural-knit technology.
                   </p>
                   <div className="flex flex-col md:flex-row gap-4 justify-center">
                     <button 
                       onClick={() => setIsAuthOpen(true)}
-                      className="bg-white text-black font-bold py-4 px-12 rounded-full hover:scale-105 transition-transform"
+                      className="bg-white text-black font-bold py-4 px-12 rounded-full hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.3)]"
                     >
                       Login to Shop
                     </button>
                     <button 
                       onClick={handleExploreClick}
-                      className="bg-transparent border border-white/20 text-white font-bold py-4 px-12 rounded-full hover:bg-white/10 transition-colors backdrop-blur-sm"
+                      className="bg-white/10 border border-white/20 text-white font-bold py-4 px-12 rounded-full hover:bg-white/20 transition-colors backdrop-blur-md"
                     >
                       View Lookbook
                     </button>
@@ -882,24 +946,28 @@
             {/* Products Section */}
             <section 
               id="products" 
-              className={`container mx-auto px-6 animate-in slide-in-from-bottom-10 duration-700 ${user ? 'pt-32 pb-32' : 'py-32'}`}
+              className={`container mx-auto px-6 animate-in slide-in-from-bottom-10 duration-700 ${user || activeSection !== 'All' ? 'pt-10 pb-32' : 'py-32'}`}
             >
               <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-6">
                 <div>
-                  <h2 className="text-5xl md:text-6xl font-black mb-4 tracking-tighter uppercase italic">
-                    {user ? (
-                       <span className="flex flex-wrap items-center gap-x-4">
-                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500">OUR</span>
-                         <span className="text-white">PRODUCTS</span>
+                   <div className="flex items-center gap-2 mb-2">
+                       <span className="text-white/40 text-sm font-bold tracking-widest uppercase">
+                           {activeSection === 'All' ? 'Collection' : `Section / ${activeSection}`}
                        </span>
-                    ) : 'Selected Gear'}
+                   </div>
+                  <h2 className="text-4xl md:text-5xl font-black mb-2 tracking-tighter uppercase italic">
+                    {activeSection === 'All' ? (user ? 'The Collection' : 'Selected Gear') : `${activeSection}'s Gear`}
                   </h2>
-                  <p className="text-white/40 max-w-md">Meticulously curated items for high-performance lifestyles.</p>
                 </div>
+                {/* Updated Middle Bar Filters - Syncing with Navbar */}
                 <div className="flex gap-2 overflow-x-auto pb-2 w-full md:w-auto no-scrollbar">
-                  {['All', 'Footwear', 'Apparel', 'Accessories'].map((cat, i) => (
-                    <button key={cat} className={`px-6 py-3 rounded-full border transition-all text-sm font-bold whitespace-nowrap ${i === 0 ? 'bg-white text-black border-white' : 'border-white/10 hover:border-white text-white'}`}>
-                      {cat}
+                  {sectionFilters.map((link) => (
+                    <button 
+                        key={link.id} 
+                        onClick={(e) => handleSectionClick(e, link.id)}
+                        className={`px-6 py-2 rounded-full border transition-all text-sm font-bold whitespace-nowrap ${activeSection === link.id ? 'bg-white text-black border-white' : 'border-white/10 hover:border-white text-white'}`}
+                    >
+                      {link.label}
                     </button>
                   ))}
                 </div>
@@ -908,25 +976,25 @@
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
                 {filteredProducts.length === 0 && (
                     <div className="col-span-full text-center py-20 text-white/30">
-                        <p>No products found in database.</p>
+                        <p>No products found in this section.</p>
                         {isAdmin && <button onClick={() => setIsAddProductOpen(true)} className="text-pink-500 underline mt-2">Add your first product</button>}
                     </div>
                 )}
                 {filteredProducts.map(product => (
                   <div 
                     key={product.id}
-                    className="group cursor-pointer"
+                    className="group cursor-pointer rounded-2xl p-3 glass-card hover:border-white/40 transition-all duration-300"
                     onClick={() => openProductDetail(product)}
                   >
-                    <div className="relative aspect-[3/4] bg-[#111] rounded-2xl overflow-hidden mb-6">
+                    <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-4 bg-black/20">
                       {product.badge && (
-                        <div className="absolute top-4 left-4 z-20 bg-white text-black text-[10px] font-black px-3 py-1 uppercase tracking-wider">
+                        <div className="absolute top-3 left-3 z-20 bg-white/90 backdrop-blur text-black text-[10px] font-black px-2 py-1 uppercase tracking-wider rounded-sm">
                           {product.badge}
                         </div>
                       )}
                       
                       {product.images && product.images.length > 1 && (
-                         <div className="absolute top-4 left-auto right-4 z-20 bg-black/50 backdrop-blur-md text-white px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1">
+                         <div className="absolute top-3 right-3 z-20 bg-black/50 backdrop-blur-md text-white px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1">
                              <ImageIcon size={10} />
                              {product.images.length}
                          </div>
@@ -935,35 +1003,44 @@
                       {isAdmin && (
                         <button
                           onClick={(e) => handleDeleteProduct(e, product.id)}
-                          className="absolute top-4 right-4 z-30 w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 shadow-lg"
-                          title="Delete Product"
+                          className="absolute bottom-3 left-3 z-30 w-8 h-8 bg-red-600/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 shadow-lg backdrop-blur"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={14} />
                         </button>
                       )}
 
                       <img 
                         src={product.image} 
                         alt={product.title || product.name}
-                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       />
                       
                       <button 
                         onClick={(e) => { e.stopPropagation(); addToCart(product); }}
-                        className="absolute bottom-4 right-4 w-12 h-12 bg-white text-black rounded-full flex items-center justify-center translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hover:bg-black hover:text-white z-20"
+                        className="absolute bottom-3 right-3 w-10 h-10 bg-white/90 text-black rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white hover:scale-110 z-20 shadow-lg"
                       >
-                        <Plus size={24} />
+                        <Plus size={20} />
                       </button>
                     </div>
 
-                    <div>
-                      <div className="flex justify-between items-start mb-1">
-                         <h3 className="text-lg font-bold text-white group-hover:underline decoration-1 underline-offset-4">{product.title || product.name}</h3>
-                         <span className="text-lg font-medium text-white/60">${product.price}</span>
+                    <div className="px-1">
+                      <h3 className="text-base font-bold text-white mb-1 truncate">{product.title || product.name}</h3>
+                      <div className="flex items-center gap-2 mb-2">
+                          <p className="text-white/40 text-xs font-medium">{product.category}</p>
+                          {product.section && <span className="text-white/20 text-[10px]">•</span>}
+                          <p className="text-white/40 text-xs font-medium">{product.section}</p>
                       </div>
-                      <p className="text-white/40 text-sm font-medium">{product.category}</p>
-                      {/* Added Description Preview so user knows it exists */}
-                      <p className="text-white/30 text-xs line-clamp-2 mt-2">{product.desc || product.description}</p>
+                      <div className="flex items-center justify-between">
+                         <div className="flex flex-col">
+                             {product.originalPrice && product.originalPrice > product.price && (
+                                 <span className="text-white/40 text-xs line-through decoration-pink-500 decoration-2">${product.originalPrice}</span>
+                             )}
+                             <span className={`text-lg font-bold ${product.originalPrice && product.originalPrice > product.price ? 'text-pink-400' : 'text-white'}`}>
+                                 ${product.price}
+                             </span>
+                         </div>
+                         <span className="text-pink-500 text-xs font-bold uppercase cursor-pointer group-hover:underline">Shop Now</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -975,16 +1052,8 @@
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_#222_0%,_#000_80%)] opacity-40 pointer-events-none" />
               <div className="container mx-auto px-6 relative z-10">
                 <div className="flex flex-col items-center justify-center select-none relative">
-                  <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 mb-16">
-                      <div className="relative w-40 h-40 md:w-56 md:h-56 flex items-center justify-center group hover:rotate-12 transition-transform duration-700">
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-pink-600 via-purple-600 to-indigo-800 shadow-[0_0_60px_rgba(168,85,247,0.5)]" />
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-t from-black/20 to-transparent" />
-                        <div className="absolute top-6 left-8 w-12 h-8 bg-white/20 rounded-full blur-[4px] rotate-45" />
-                        <span className="relative z-10 font-black text-[5rem] md:text-[8rem] italic text-white drop-shadow-2xl transform -translate-x-2">P</span>
-                      </div>
-                      <span className="text-[4rem] md:text-[8rem] font-black tracking-tighter text-white leading-none text-center">
-                        rinsports
-                      </span>
+                  <div className="flex flex-col items-center justify-center gap-4 mb-12">
+                      <PrinsportsLogo className="scale-150" />
                   </div>
                   <div className="flex gap-8 mb-16">
                     {[Instagram, Twitter, Facebook, Youtube].map((Icon, i) => (
@@ -1012,7 +1081,7 @@
             {selectedProduct && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8">
                 <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setSelectedProduct(null)} />
-                <div className="relative w-full max-w-6xl bg-[#0a0a0a] rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-auto animate-in fade-in zoom-in-95 duration-300 border border-white/10">
+                <div className="relative w-full max-w-6xl glass-card rounded-3xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-auto animate-in fade-in zoom-in-95 duration-300">
                   <button 
                     onClick={() => setSelectedProduct(null)}
                     className="absolute top-6 right-6 z-20 p-2 bg-black/50 hover:bg-white hover:text-black rounded-full text-white transition-colors backdrop-blur-md border border-white/10"
@@ -1042,10 +1111,11 @@
                         </div>
                     )}
                   </div>
-                  <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center bg-[#0a0a0a]">
+                  <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center bg-transparent">
                     <div className="mb-auto">
                       <div className="flex items-center gap-3 mb-6">
                          <span className="px-3 py-1 border border-white/20 rounded-full text-xs font-bold uppercase tracking-wider text-white/60">{selectedProduct.category}</span>
+                         {selectedProduct.section && <span className="px-3 py-1 border border-white/20 rounded-full text-xs font-bold uppercase tracking-wider text-white/60">{selectedProduct.section}</span>}
                          {selectedProduct.badge && <span className="px-3 py-1 bg-white text-black rounded-full text-xs font-bold uppercase tracking-wider">{selectedProduct.badge}</span>}
                       </div>
                       <h2 className="text-4xl md:text-6xl font-black leading-[0.9] mb-6 tracking-tight">{selectedProduct.title || selectedProduct.name}</h2>
@@ -1053,7 +1123,12 @@
                     </div>
                     <div className="pt-8 border-t border-white/10">
                       <div className="flex items-end justify-between mb-6">
-                        <span className="text-4xl font-bold">${selectedProduct.price}</span>
+                        <div className="flex flex-col">
+                            {selectedProduct.originalPrice && selectedProduct.originalPrice > selectedProduct.price && (
+                                <span className="text-lg line-through text-white/40 decoration-pink-500">${selectedProduct.originalPrice}</span>
+                            )}
+                            <span className="text-4xl font-bold">${selectedProduct.price}</span>
+                        </div>
                       </div>
                       <button 
                         onClick={() => { addToCart(selectedProduct); setSelectedProduct(null); }}
