@@ -9,8 +9,9 @@
     <style>
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #050505;
-        background-image: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #050505 60%, #000000 100%);
+        background-color: #000000;
+        /* Grey gradient on black as requested */
+        background-image: radial-gradient(circle at 50% -10%, #3a3a3a 0%, #151515 40%, #000000 100%);
         background-attachment: fixed;
         color: white;
         overflow-x: hidden;
@@ -26,17 +27,57 @@
         background: #0a0a0a; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #333; 
+        background: #444; 
         border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #555; 
+        background: #666; 
       }
-      .glass-card {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 50%, rgba(255, 255, 255, 0.01) 100%);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+
+      /* --- ULTRA PREMIUM GLASS STYLE --- */
+      /* Updated to be bolder and brighter like the reference */
+      .glass-premium {
+        background: linear-gradient(
+          135deg, 
+          rgba(255, 255, 255, 0.12) 0%, 
+          rgba(255, 255, 255, 0.03) 100%
+        );
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        
+        /* Stronger, brighter borders for that "bold" glass look */
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-top: 1px solid rgba(255, 255, 255, 0.35); /* Bright top light */
+        border-left: 1px solid rgba(255, 255, 255, 0.25); /* Bright left light */
+        
+        box-shadow: 
+          0 25px 50px -12px rgba(0, 0, 0, 0.7),
+          inset 0 0 20px rgba(255, 255, 255, 0.02);
+      }
+
+      .glass-premium:hover {
+        background: linear-gradient(
+          135deg, 
+          rgba(255, 255, 255, 0.15) 0%, 
+          rgba(255, 255, 255, 0.05) 100%
+        );
+        border-top-color: rgba(255, 255, 255, 0.5);
+        transform: translateY(-4px);
+      }
+
+      /* Input fields inside glass cards */
+      .glass-input {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        color: white;
+        transition: all 0.3s ease;
+      }
+      .glass-input:focus {
+        background: rgba(0, 0, 0, 0.6);
+        border-color: rgba(236, 72, 153, 0.6); /* pink-500 */
+        box-shadow: 0 0 25px rgba(236, 72, 153, 0.2);
+        outline: none;
       }
       .no-scrollbar::-webkit-scrollbar {
         display: none;
@@ -48,20 +89,17 @@
     </style>
     <!-- Import Map -->
     <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "lucide-react": "https://esm.sh/lucide-react@0.344.0",
-    "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
-  }
-}
-</script>
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.344.0?deps=react@18.2.0",
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+      }
+    }
+    </script>
     <!-- Babel for in-browser JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   </head>
@@ -123,7 +161,7 @@
               className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
               onClick={onClose}
             />
-            <div className="relative w-full max-w-md h-full bg-[#0a0a0a] border-l border-white/10 flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="relative w-full max-w-md h-full bg-[#050505]/95 backdrop-blur-xl border-l border-white/10 flex flex-col animate-in slide-in-from-right duration-300 shadow-2xl">
               <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
                 <div>
                   <h2 className="text-2xl font-bold text-white">Your Cart</h2>
@@ -153,8 +191,8 @@
                   </div>
                 ) : (
                   items.map((item) => (
-                    <div key={item.id} className="bg-white/5 border border-white/10 rounded-xl p-4 flex gap-4 group hover:bg-white/10 transition-colors">
-                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
+                    <div key={item.id} className="glass-premium rounded-xl p-4 flex gap-4 group transition-colors">
+                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-black/40 flex-shrink-0">
                         <img src={item.image} alt={item.title || item.name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 flex flex-col justify-between">
@@ -169,7 +207,7 @@
                         </div>
                         <div className="flex justify-between items-end">
                           <p className="text-pink-400 font-bold">${item.price * item.quantity}</p>
-                          <div className="flex items-center gap-3 bg-black/20 rounded-lg p-1 border border-white/10">
+                          <div className="flex items-center gap-3 bg-black/40 rounded-lg p-1 border border-white/5">
                             <button 
                               onClick={() => onUpdateQuantity(item.id, -1)}
                               disabled={item.quantity <= 1}
@@ -222,13 +260,13 @@
       const PrinsportsLogo = ({ className = "", onClick }) => (
         <div onClick={onClick} className={`flex items-center gap-2 ${className} select-none cursor-pointer group`}>
           <img 
-            src="image.png" 
+            src="https://i.ibb.co/DqgMptv/upscalemedia-transformed-1.png" 
             alt="Prinsports Logo" 
-            className="h-12 w-auto object-contain hover:scale-105 transition-transform duration-300"
+            className="h-28 md:h-40 w-auto object-contain hover:scale-105 transition-transform duration-300 drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]"
             onError={(e) => {
               e.target.onerror = null; 
               // Fallback if image fails to load
-              e.target.src = "https://placehold.co/150x50/black/white?text=Prinsports";
+              e.target.src = "https://placehold.co/200x80/black/white?text=Prinsports";
             }}
           />
         </div>
@@ -358,11 +396,11 @@
         return (
           <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4" onClick={onClose}>
              <div 
-              className="glass-card text-white w-full max-w-lg rounded-3xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto" 
+              className="glass-premium text-white w-full max-w-lg rounded-3xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto" 
               onClick={e => e.stopPropagation()}
             >
-              <div className="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-black/50 backdrop-blur-md z-10">
-                <h3 className="text-xl font-bold">Add New Product</h3>
+              <div className="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-black/20 backdrop-blur-md z-10">
+                <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">Add New Product</h3>
                 <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-white/50 hover:text-white">
                   <X size={20} />
                 </button>
@@ -371,7 +409,7 @@
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase text-white/40 ml-1 tracking-widest">Product Images</label>
-                    <div className={`w-full bg-[#111] border-2 border-dashed border-white/10 rounded-xl overflow-hidden relative group hover:border-white/30 transition-colors ${previews.length === 0 ? 'aspect-video flex items-center justify-center' : 'p-2'}`}>
+                    <div className={`w-full glass-input border-dashed border-white/20 rounded-xl overflow-hidden relative group hover:border-pink-500/50 transition-colors ${previews.length === 0 ? 'aspect-video flex items-center justify-center' : 'p-2'}`}>
                       
                       {previews.length > 0 ? (
                         <div className="grid grid-cols-3 gap-2 w-full">
@@ -381,7 +419,7 @@
                               <button 
                                 type="button"
                                 onClick={() => removeImage(idx)} 
-                                className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover/img:opacity-100 transition-opacity shadow-lg"
                               >
                                 <X size={12} />
                               </button>
@@ -424,7 +462,7 @@
                         type="text" 
                         value={formData.name}
                         onChange={handleChange}
-                        className="w-full bg-[#111] border border-white/10 rounded-xl p-3 text-white focus:border-pink-500 outline-none transition-colors placeholder-white/20"
+                        className="w-full glass-input rounded-xl p-3 text-white placeholder-white/20"
                         placeholder="e.g. Cyber Runner"
                       />
                     </div>
@@ -436,7 +474,7 @@
                         type="number" 
                         value={formData.price}
                         onChange={handleChange}
-                        className="w-full bg-[#111] border border-white/10 rounded-xl p-3 text-white focus:border-pink-500 outline-none transition-colors placeholder-white/20"
+                        className="w-full glass-input rounded-xl p-3 text-white placeholder-white/20"
                         placeholder="99"
                       />
                     </div>
@@ -451,7 +489,7 @@
                         type="number" 
                         value={formData.originalPrice}
                         onChange={handleChange}
-                        className="w-full bg-[#111] border border-white/10 rounded-xl p-3 text-white focus:border-pink-500 outline-none transition-colors placeholder-white/20"
+                        className="w-full glass-input rounded-xl p-3 text-white placeholder-white/20"
                         placeholder="For Sale items"
                       />
                     </div>
@@ -461,12 +499,12 @@
                         name="section"
                         value={formData.section}
                         onChange={handleChange}
-                        className="w-full bg-[#111] border border-white/10 rounded-xl p-3 text-white focus:border-pink-500 outline-none transition-colors"
+                        className="w-full glass-input rounded-xl p-3 text-white"
                         >
-                        <option value="Men">Men</option>
-                        <option value="Women">Women</option>
-                        <option value="Kids">Kids</option>
-                        <option value="Unisex">Unisex</option>
+                        <option value="Men" className="bg-black text-white">Men</option>
+                        <option value="Women" className="bg-black text-white">Women</option>
+                        <option value="Kids" className="bg-black text-white">Kids</option>
+                        <option value="Unisex" className="bg-black text-white">Unisex</option>
                         </select>
                     </div>
                   </div>
@@ -477,12 +515,12 @@
                       name="category"
                       value={formData.category}
                       onChange={handleChange}
-                      className="w-full bg-[#111] border border-white/10 rounded-xl p-3 text-white focus:border-pink-500 outline-none transition-colors"
+                      className="w-full glass-input rounded-xl p-3 text-white"
                     >
-                      <option>Footwear</option>
-                      <option>Apparel</option>
-                      <option>Accessories</option>
-                      <option>Tech</option>
+                      <option className="bg-black text-white">Footwear</option>
+                      <option className="bg-black text-white">Apparel</option>
+                      <option className="bg-black text-white">Accessories</option>
+                      <option className="bg-black text-white">Tech</option>
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -493,13 +531,13 @@
                       value={formData.description}
                       onChange={handleChange}
                       placeholder="Enter product details..."
-                      className="w-full bg-[#111] border border-white/10 rounded-xl p-3 text-white focus:border-pink-500 outline-none transition-colors placeholder-white/20 h-24 resize-none"
+                      className="w-full glass-input rounded-xl p-3 text-white placeholder-white/20 h-24 resize-none"
                     />
                   </div>
                   <button 
                     type="submit" 
                     disabled={loading}
-                    className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-pink-500 to-violet-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40 hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center gap-2"
                   >
                     {loading ? <Loader2 className="animate-spin" /> : <Plus size={20} />}
                     {loading ? 'Uploading...' : 'Add Product'}
@@ -585,7 +623,7 @@
         return (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4" onClick={onClose}>
             <div 
-              className="glass-card text-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200" 
+              className="glass-premium text-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200" 
               onClick={e => e.stopPropagation()}
             >
               <div className="flex border-b border-white/10">
@@ -625,7 +663,7 @@
                         type="text" 
                         value={name}
                         onChange={e => setName(e.target.value)}
-                        className="w-full bg-[#111] border border-white/10 rounded-xl p-4 text-white focus:border-pink-500 outline-none transition-colors placeholder-white/20" 
+                        className="w-full glass-input rounded-xl p-4 text-white placeholder-white/20" 
                         placeholder="John Doe" 
                       />
                     </div>
@@ -636,7 +674,7 @@
                       type="email" 
                       value={email}
                       onChange={e => setEmail(e.target.value)}
-                      className="w-full bg-[#111] border border-white/10 rounded-xl p-4 text-white focus:border-pink-500 outline-none transition-colors placeholder-white/20" 
+                      className="w-full glass-input rounded-xl p-4 text-white placeholder-white/20" 
                       placeholder="name@example.com" 
                     />
                   </div>
@@ -647,7 +685,7 @@
                         type={showPassword ? "text" : "password"} 
                         value={password}
                         onChange={e => setPassword(e.target.value)}
-                        className="w-full bg-[#111] border border-white/10 rounded-xl p-4 text-white focus:border-pink-500 outline-none transition-colors placeholder-white/20 pr-10" 
+                        className="w-full glass-input rounded-xl p-4 text-white placeholder-white/20 pr-10" 
                         placeholder="••••••••" 
                         />
                         <button 
@@ -953,26 +991,31 @@
 
             {/* Hero Section */}
             {!user && activeSection === 'All' && (
-              <section className="relative h-[85vh] flex items-center justify-center overflow-hidden animate-out fade-out slide-out-to-top duration-500">
+              <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden animate-out fade-out slide-out-to-top duration-500">
+                
+                {/* Full Screen Background Image */}
                 <div className="absolute inset-0 z-0">
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0a]/50 to-[#0a0a0a] z-10" />
-                  <div className="absolute inset-0 bg-black/20 z-0" />
                   <img 
-                    src="https://images.unsplash.com/photo-1556906781-9a412961c28c?q=80&w=2000&auto=format&fit=crop" 
-                    alt="Hero"
-                    className="w-full h-full object-cover animate-[scale-in_20s_ease-out_forwards]" 
+                    src="https://images.unsplash.com/photo-1552346154-21d32810aba3?q=80&w=1000&auto=format&fit=crop" 
+                    alt="Hero Background" 
+                    className="w-full h-full object-cover scale-110 motion-safe:animate-[pulse_10s_ease-in-out_infinite]"
                   />
+                  {/* Overlay for legibility */}
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-black/80" />
                 </div>
                 
-                <div className="container mx-auto px-6 relative z-20 text-center">
-                  <h1 className="text-6xl md:text-9xl font-black tracking-tighter mb-8 text-white leading-[0.9] drop-shadow-2xl">
+                <div className="container mx-auto px-6 relative z-20 text-center flex flex-col items-center justify-center mt-[-50px]">
+                  <h1 className="text-6xl md:text-9xl font-black tracking-tighter mb-6 text-white leading-[0.9] drop-shadow-2xl animate-in slide-in-from-top-10 duration-700">
                     BEYOND<br/>
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500">LIMITS.</span>
                   </h1>
-                  <p className="text-lg md:text-xl text-white/80 max-w-xl mx-auto mb-12 leading-relaxed font-medium drop-shadow-md">
+                  <p className="text-lg md:text-xl text-white/90 max-w-xl mx-auto mb-8 leading-relaxed font-medium drop-shadow-md text-shadow">
                     Engineered for the ambitious. The new 2025 collection features adaptive fabrics and neural-knit technology.
                   </p>
-                  <div className="flex flex-col md:flex-row gap-4 justify-center">
+                  
+                  <div className="flex flex-col md:flex-row gap-4 justify-center mb-12 relative z-30">
                     <button 
                       onClick={() => setIsAuthOpen(true)}
                       className="bg-white text-black font-bold py-4 px-12 rounded-full hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.3)]"
@@ -1030,10 +1073,10 @@
                 {filteredProducts.map(product => (
                   <div 
                     key={product.id}
-                    className="group cursor-pointer rounded-2xl p-3 glass-card hover:border-white/40 transition-all duration-300"
+                    className="group relative cursor-pointer rounded-3xl p-4 glass-premium transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(255,0,128,0.3)]"
                     onClick={() => openProductDetail(product)}
                   >
-                    <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-4 bg-black/20">
+                    <div className="relative aspect-[4/5] rounded-2xl overflow-hidden mb-4 bg-black/40">
                       {product.badge && (
                         <div className="absolute top-3 left-3 z-20 bg-white/90 backdrop-blur text-black text-[10px] font-black px-2 py-1 uppercase tracking-wider rounded-sm">
                           {product.badge}
@@ -1059,7 +1102,7 @@
                       <img 
                         src={product.image} 
                         alt={product.title || product.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 group-hover:brightness-110"
                       />
                       
                       <button 
@@ -1070,7 +1113,7 @@
                       </button>
                     </div>
 
-                    <div className="px-1">
+                    <div className="px-2">
                       <h3 className="text-base font-bold text-white mb-1 truncate">{product.title || product.name}</h3>
                       <div className="flex items-center gap-2 mb-2">
                           <p className="text-white/40 text-xs font-medium">{product.category}</p>
@@ -1128,7 +1171,7 @@
             {selectedProduct && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8">
                 <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setSelectedProduct(null)} />
-                <div className="relative w-full max-w-6xl glass-card rounded-3xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-auto animate-in fade-in zoom-in-95 duration-300">
+                <div className="relative w-full max-w-6xl glass-premium rounded-3xl overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-auto animate-in fade-in zoom-in-95 duration-300">
                   <button 
                     onClick={() => setSelectedProduct(null)}
                     className="absolute top-6 right-6 z-20 p-2 bg-black/50 hover:bg-white hover:text-black rounded-full text-white transition-colors backdrop-blur-md border border-white/10"
